@@ -1,0 +1,62 @@
+import sqlite3
+import json
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+db_path = "netflix.db"
+
+
+def connect_to_db():
+    conn = sqlite3.connect(db_path)
+    return conn
+
+
+def execute_query(query, parameters=None):
+    conn = connect_to_db()
+    cursor = conn.cursor()
+
+    if parameters:
+        cursor.execute(query, parameters)
+    else:
+        cursor.execute(query)
+
+    results = cursor.fetchall()
+
+    conn.close()
+
+    return results
+
+
+def format_movies(results):
+    movies = []
+    for row in results:
+        movie = {
+            "title": row[0],
+            "country": row[1],
+            "release_year": row[2],
+            "genre": row[3],
+            "description": row[4]
+        }
+        movies.append(movie)
+
+    return json.dumps(movies)
+
+
+@app.route("/api/movies", methods=["GET"])
+def get_movies():
+    query = "SELECT * FROM movies"
+    results = execute_query(query)
+    movies_json = format_movies(results)
+    return jsonify(movies_json)
+
+
+@app.route("/api/movies/genre/<genre>", methods=["GET"])
+def get_movies_by_genre(genre):
+    query = "SELECT * FROM movies WHERE genre = ?"
+    results = execute_query(query, (genre,))
+    movies_json = format_movies(results)
+    return jsonify(movies_json)
+
+
+if __name__ == "__main__":
+    app.run()
